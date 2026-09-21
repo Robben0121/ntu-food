@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Project URL
+
+[https://ntu-food.vercel.app](https://ntu-food.vercel.app)
+
+## About
+
+NTU Food is a food discovery and recommendation web app built for the NTU community. It helps students and staff explore food options around campus, browse menus, compare prices, and find something to eat quickly — whether you're deciding between the canteens, hunting for the cheapest meal of the day, or looking for a new spot to try.
+
+The site is built with [Next.js](https://nextjs.org) (App Router) and deployed on [Vercel](https://vercel.com), with the Geist font family optimized automatically via [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts).
+
 ## Getting Started
 
 First, run the development server:
