@@ -1,0 +1,78 @@
+// NTU 附近美食 - 数据模型
+// 数据库：Neon Postgres（连接串在 .env 的 DATABASE_URL）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String // 昵称
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  ratings      Rating[]
+  comments     Comment[]
+}
+
+// 餐厅
+model Restaurant {
+  id          String    @id @default(cuid())
+  name        String // 店名
+  cuisine     String // 菜系
+  address     String // 位置/地址
+  priceMin    Float? // 人均最低价（新币 SGD）
+  priceMax    Float? // 人均最高价
+  description String? // 简介
+  imageUrl    String? // 封面图链接
+  tags        String    @default("") // 标签，逗号分隔，如 "宵夜,快餐,适合聚餐"
+  hours       String? // 营业时间
+  phone       String? // 电话
+  sourceUrl   String? // 小红书等参考链接
+  avgRating   Float     @default(0) // 综合评分（冗余存储，方便排序）
+  ratingCount Int       @default(0) // 评分人数
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  ratings     Rating[]
+  comments    Comment[]
+
+  @@index([cuisine])
+  @@index([avgRating])
+}
+
+// 评分
+model Rating {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  score        Int // 总分 1-5
+  taste        Int? // 口味 1-5
+  environment  Int? // 环境 1-5
+  value        Int? // 性价比 1-5
+  createdAt    DateTime   @default(now())
+
+  @@index([restaurantId])
+  @@index([userId])
+}
+
+// 评论
+model Comment {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content      String
+  createdAt    DateTime   @default(now())
+
+  @@index([restaurantId])
+  @@index([userId])
+}

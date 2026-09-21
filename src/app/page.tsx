@@ -1,69 +1,125 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import RestaurantCard from "@/components/RestaurantCard";
+import RandomButton from "@/components/RandomButton";
+import AutoSubmitSelect from "@/components/AutoSubmitSelect";
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const cuisine = typeof sp.cuisine === "string" ? sp.cuisine : "";
+  const sort = typeof sp.sort === "string" ? sp.sort : "rating";
+
+  const where: Prisma.RestaurantWhereInput = {};
+  if (q) {
+    where.OR = [
+      { name: { contains: q } },
+      { cuisine: { contains: q } },
+      { description: { contains: q } },
+      { tags: { contains: q } },
+      { address: { contains: q } },
+    ];
+  }
+  if (cuisine) where.cuisine = cuisine;
+
+  const orderBy: Prisma.RestaurantOrderByWithRelationInput =
+    sort === "priceAsc"
+      ? { priceMin: "asc" }
+      : sort === "priceDesc"
+        ? { priceMin: "desc" }
+        : sort === "newest"
+          ? { createdAt: "desc" }
+          : { avgRating: "desc" };
+
+  const [restaurants, cuisines] = await Promise.all([
+    prisma.restaurant.findMany({
+      where,
+      orderBy,
+      include: { _count: { select: { comments: true } } },
+    }),
+    prisma.restaurant.findMany({
+      distinct: ["cuisine"],
+      select: { cuisine: true },
+      orderBy: { cuisine: "asc" },
+    }),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+        <form method="GET" action="/" className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="搜索店名、菜系、标签、位置…"
+              className="w-full rounded-full border border-stone-200 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button
+              type="submit"
+              className="shrink-0 rounded-full bg-orange-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-orange-700"
+            >
+              搜索
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AutoSubmitSelect
+              name="cuisine"
+              defaultValue={cuisine}
+              className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+            >
+              <option value="">全部菜系</option>
+              {cuisines.map((c) => (
+                <option key={c.cuisine} value={c.cuisine}>
+                  {c.cuisine}
+                </option>
+              ))}
+            </AutoSubmitSelect>
+            <AutoSubmitSelect
+              name="sort"
+              defaultValue={sort}
+              className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm focus:border-orange-400 focus:outline-none"
+            >
+              <option value="rating">评分最高</option>
+              <option value="newest">最新添加</option>
+              <option value="priceAsc">价格从低到高</option>
+              <option value="priceDesc">价格从高到低</option>
+            </AutoSubmitSelect>
+            <RandomButton ids={restaurants.map((r) => r.id)} />
+          </div>
+        </form>
+      </section>
+
+      {restaurants.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
+          <p className="text-3xl">🍽️</p>
+          <p className="mt-2 font-medium text-stone-700">
+            {q || cuisine ? "没有找到符合条件的餐厅" : "还没有餐厅"}
+          </p>
+          <p className="mt-1 text-sm text-stone-400">
+            {q || cuisine ? "换个关键词试试吧" : "来添加第一家 NTU 附近的美食吧"}
+          </p>
+          {!q && !cuisine && (
+            <Link
+              href="/add"
+              className="mt-4 inline-block rounded-full bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700"
+            >
+              + 添加餐厅
+            </Link>
+          )}
         </div>
-      </main>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {restaurants.map((r) => (
+            <RestaurantCard key={r.id} restaurant={r} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
